@@ -1,7 +1,6 @@
-import 'dart:convert';
-
 import 'package:flutter/material.dart';
-import 'package:http/http.dart' as http;
+import 'package:todoapp/services/todo_services.dart';
+import 'package:todoapp/utills/snackbar_helper.dart';
 
 class AddTodoPage extends StatefulWidget {
   final Map? todo;
@@ -63,20 +62,15 @@ class _AddTodoPageState extends State<AddTodoPage> {
     final des = desController.text;
     final body = {"title": title, "description": des, "is_completed": false};
     //submit to the server
-    final url = 'https://api.nstack.in/v1/todos';
-    final uri = Uri.parse(url);
-    final response = await http.post(
-      uri,
-      body: jsonEncode(body),
-      headers: {'Content-Type': 'application/json'},
-    );
+
+    final isSuccess = await TodoServices.addToDo(body);
     //show success or fails message
-    if (response.statusCode == 201) {
+    if (isSuccess) {
       titleController.text = '';
       desController.text = '';
-      showSuccessMesage('Creation success');
+      showSuccessMesage(context, message: 'Creation success');
     } else {
-      showErrorMesage('Creation false');
+      showErrorMesage(context, message: 'Creation false');
     }
   }
 
@@ -93,31 +87,14 @@ class _AddTodoPageState extends State<AddTodoPage> {
     final des = desController.text;
     final body = {"title": title, "description": des, "is_completed": false};
     //submit to the server
-    final url = 'https://api.nstack.in/v1/todos/$id';
-    final uri = Uri.parse(url);
-    final response = await http.put(
-      uri,
-      body: jsonEncode(body),
-      headers: {'Content-Type': 'application/json'},
-    );
+
+    final isSuccess = await TodoServices.updateTodo(id, body);
+
     //show success or fails message
-    if (response.statusCode == 200) {
-      showSuccessMesage('Updated success');
+    if (isSuccess) {
+      showSuccessMesage(context, message: 'Updated success');
     } else {
-      showErrorMesage('Updated false');
+      showErrorMesage(context, message: 'Updated false');
     }
-  }
-
-  void showSuccessMesage(String message) {
-    final snackbar = SnackBar(content: Text(message));
-    ScaffoldMessenger.of(context).showSnackBar(snackbar);
-  }
-
-  void showErrorMesage(String message) {
-    final snackbar = SnackBar(
-      content: Text(message, style: TextStyle(color: Colors.white)),
-      backgroundColor: Colors.red,
-    );
-    ScaffoldMessenger.of(context).showSnackBar(snackbar);
   }
 }

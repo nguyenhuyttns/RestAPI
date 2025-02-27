@@ -1,8 +1,8 @@
-import 'dart:convert';
-
 import 'package:flutter/material.dart';
 import 'package:todoapp/screens/add_page.dart';
-import 'package:http/http.dart' as http;
+import 'package:todoapp/services/todo_services.dart';
+import 'package:todoapp/utills/snackbar_helper.dart';
+import 'package:todoapp/widget/todo_card.dart';
 
 class ToDoListPage extends StatefulWidget {
   const ToDoListPage({super.key});
@@ -17,7 +17,6 @@ class _ToDoListPageState extends State<ToDoListPage> {
 
   @override
   void initState() {
-    // TODO: implement initState
     super.initState();
     fetchToDo();
   }
@@ -31,34 +30,27 @@ class _ToDoListPageState extends State<ToDoListPage> {
         child: Center(child: CircularProgressIndicator()),
         replacement: RefreshIndicator(
           onRefresh: fetchToDo,
-          child: ListView.builder(
-            itemCount: items.length,
-            itemBuilder: (context, index) {
-              final item = items[index] as Map;
-              final id = item['_id'] as String;
-              return ListTile(
-                leading: CircleAvatar(child: Text('${index + 1}')),
-                title: Text(item['title']),
-                subtitle: Text(item['description']),
-                trailing: PopupMenuButton(
-                  onSelected: (value) {
-                    if (value == 'edit') {
-                      navigateToEditPage(item);
-                      //open edit page
-                    } else if (value == 'delete') {
-                      //delete and refresh
-                      deleteById(id);
-                    }
-                  },
-                  itemBuilder: (context) {
-                    return [
-                      PopupMenuItem(child: Text('Edit'), value: 'edit'),
-                      PopupMenuItem(child: Text('Delete'), value: 'delete'),
-                    ];
-                  },
-                ),
-              );
-            },
+          child: Visibility(
+            visible: items.isNotEmpty,
+            replacement: Center(
+              child: Text(
+                'No todo item',
+                style: Theme.of(context).textTheme.headlineLarge,
+              ),
+            ),
+            child: ListView.builder(
+              itemCount: items.length,
+              padding: EdgeInsets.all(12),
+              itemBuilder: (context, index) {
+                final item = items[index] as Map;
+                return TodoCard(
+                  index: index,
+                  item: item,
+                  navigateToEdit: navigateToEditPage,
+                  deleteById: deleteById,
+                );
+              },
+            ),
           ),
         ),
       ),
@@ -90,15 +82,14 @@ class _ToDoListPageState extends State<ToDoListPage> {
   }
 
   Future<void> fetchToDo() async {
-    final url = 'https://api.nstack.in/v1/todos?page=1&limit=10';
-    final uri = Uri.parse(url);
-    final response = await http.get(uri);
-    if (response.statusCode == 200) {
-      final json = jsonDecode(response.body) as Map;
-      final result = json['items'] as List;
+    final response = await TodoServices.fetchToDo();
+
+    if (response != null) {
       setState(() {
-        items = result;
+        items = response;
       });
+    } else {
+      showErrorMesage(context, message: 'Something went wrong');
     }
     setState(() {
       isLoading = false;
@@ -106,25 +97,14 @@ class _ToDoListPageState extends State<ToDoListPage> {
   }
 
   Future<void> deleteById(String id) async {
-    final url = 'https://api.nstack.in/v1/todos/$id';
-    final uri = Uri.parse(url);
-    final response = await http.delete(uri);
-
-    if (response.statusCode == 200) {
+    final isSuccess = await TodoServices.deleteById(id);
+    if (isSuccess) {
       final filtered = items.where((element) => element['_id'] != id).toList();
       setState(() {
         items = filtered;
       });
     } else {
-      showErrorMesage('Delection failed');
+      showErrorMesage(context, message: 'showErrorMesage');
     }
-  }
-
-  void showErrorMesage(String message) {
-    final snackbar = SnackBar(
-      content: Text(message, style: TextStyle(color: Colors.white)),
-      backgroundColor: Colors.red,
-    );
-    ScaffoldMessenger.of(context).showSnackBar(snackbar);
   }
 }
